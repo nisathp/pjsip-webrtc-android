@@ -1,0 +1,88 @@
+name: Build Android PJSIP WebRTC AEC3
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-abi:
+    name: Build ${{ matrix.abi }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [armeabi-v7a, arm64-v8a, x86_64]
+    steps:
+      - name: Check out source and pinned dependencies
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK r28
+        run: sdkmanager --install 'ndk;28.2.13676358'
+
+      - name: Restore Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build PJSIP, bundled WebRTC AEC3, and PJSUA2
+        env:
+          ANDROID_NDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}/ndk/28.2.13676358
+          TARGET_ABI: ${{ matrix.abi }}
+          ANDROID_API: '24'
+        run: ./scripts/build-android.sh
+
+      - name: Check 16 KB ELF alignment
+        env:
+          ANDROID_NDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}/ndk/28.2.13676358
+          TARGET_ABI: ${{ matrix.abi }}
+        run: |
+          set -euo pipefail
+          work_dir="$(mktemp -d)"
+          unzip -q "dist/${TARGET_ABI}/pjsip-webrtc-aec3-${TARGET_ABI}.aar" -d "$work_dir"
+          find "$work_dir/jni" -name '*.so' -print -exec "${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf" -lW {} \;
+
+      - name: Upload ABI AAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: pjsip-webrtc-aec3-${{ matrix.abi }}
+          path: dist/${{ matrix.abi }}/pjsip-webrtc-aec3-${{ matrix.abi }}.aar
+          if-no-files-found: error
+
+  package-aar:
+    name: Package universal AAR
+    needs: build-abi
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download ABI AARs
+        uses: actions/download-artifact@v4
+        with:
+          path: downloaded-artifacts
+          pattern: pjsip-webrtc-aec3-*
+          merge-multiple: false
+
+      - name: Create universal AAR
+        run: ./scripts/package-fat-aar.sh downloaded-artifacts dist/pjsip-webrtc-aec3.aar
+
+      - name: Upload universal Android library
+        uses: actions/upload-artifact@v4
+        with:
+          name: pjsip-webrtc-aec3-android
+          path: dist/pjsip-webrtc-aec3.aar
+          if-no-files-found: error
+
