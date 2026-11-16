@@ -31,6 +31,8 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - name: Install Android NDK r28
         run: sdkmanager --install 'ndk;28.2.13676358'
@@ -85,4 +87,5 @@ jobs:
           name: pjsip-webrtc-aec3-android
           path: dist/pjsip-webrtc-aec3.aar
           if-no-files-found: error
+
 
