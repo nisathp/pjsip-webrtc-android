@@ -41,7 +41,7 @@ pushd pjsip-apps/src/swig/java >/dev/null
 make
 
 pushd android >/dev/null
-./gradlew --no-daemon :pjsua2:assembleRelease
+bash ./gradlew --no-daemon :pjsua2:assembleRelease
 
 OUT_DIR="${ROOT_DIR}/dist/${ABI}"
 mkdir -p "${OUT_DIR}"
