@@ -4,6 +4,8 @@ set -euo pipefail
 # Combines one single-ABI PJSUA2 AAR from each matrix job into one Android AAR.
 INPUT_DIR="${1:?Usage: package-fat-aar.sh <downloaded-artifact-directory> <output-aar>}"
 OUTPUT_AAR="${2:?Usage: package-fat-aar.sh <downloaded-artifact-directory> <output-aar>}"
+mkdir -p "$(dirname "${OUTPUT_AAR}")"
+OUTPUT_AAR="$(cd "$(dirname "${OUTPUT_AAR}")" && pwd)/$(basename "${OUTPUT_AAR}")"
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "${WORK_DIR}"' EXIT
 
@@ -30,7 +32,6 @@ for aar in "${AARS[@]}"; do
   fi
 done
 
-mkdir -p "$(dirname "${OUTPUT_AAR}")"
 pushd "${WORK_DIR}" >/dev/null
 zip -qr "${OUTPUT_AAR}" .
 popd >/dev/null
