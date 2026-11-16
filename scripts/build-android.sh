@@ -35,7 +35,10 @@ make dep
 make -j"$(getconf _NPROCESSORS_ONLN)"
 
 pushd pjsip-apps/src/swig/java >/dev/null
-make -j"$(getconf _NPROCESSORS_ONLN)"
+# The upstream SWIG Makefile generates Java sources as a side effect of the
+# native target but does not declare that relationship to its Java targets.
+# Keep this invocation serial so Java compilation cannot race source creation.
+make
 
 pushd android >/dev/null
 ./gradlew --no-daemon :pjsua2:assembleRelease
